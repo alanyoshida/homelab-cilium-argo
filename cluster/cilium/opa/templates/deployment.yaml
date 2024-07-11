@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opa
+  labels:
+    app: opa
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: opa
+  template:
+    metadata:
+      labels:
+        app: opa
+      name: opa
+    spec:
+      containers:
+      - name: opa
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.service.port }}
+        args:
+        - "run"
+        - "--ignore=.*"  # exclude hidden dirs created by Kubernetes
+        - "--server"
+        - "/policies"
+        {{ template "opa.policies.volumeMounts" . }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            scheme: HTTP              # assumes OPA listens on localhost:8181
+            port: 8181
+          initialDelaySeconds: 5      # tune these periods for your environment
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health?bundle=true  # Include bundle activation in readiness
+            scheme: HTTP
+            port: 8181
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      {{ template "opa.policies.volume" . }}
