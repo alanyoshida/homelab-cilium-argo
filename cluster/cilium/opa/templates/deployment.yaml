@@ -27,7 +27,12 @@ spec:
         - "--ignore=.*"  # exclude hidden dirs created by Kubernetes
         - "--server"
         - "/policies"
-        {{ template "opa.policies.volumeMounts" . }}
+        volumeMounts:
+        {{- range .Values.policies }}
+        - readOnly: true
+          mountPath: /policies/{{ . }}.rego
+          name: {{ . }}
+        {{- end }}
         livenessProbe:
           httpGet:
             path: /health
@@ -42,4 +47,9 @@ spec:
             port: 8181
           initialDelaySeconds: 5
           periodSeconds: 5
-      {{ template "opa.policies.volume" . }}
+      volumes:
+      {{- range  .Values.policies }}
+      - name: {{ . }}
+        configMap:
+          name: {{ . }}
+      {{- end }}
